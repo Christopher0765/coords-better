@@ -43,11 +43,14 @@ function format_num(val)
 end
 
 function save_config()
-    local str = string.format("%d %d %d %d %d %d %d %d %d %s", 
+    -- Añadimos %.2f (para el float del volumen) antes del %s (el idioma)
+    local str = string.format("%d %d %d %d %d %d %d %d %d %.2f %s", 
         math.floor(tr), math.floor(tg), math.floor(tb), 
         math.floor(tm_r), math.floor(tm_g), math.floor(tm_b), 
         M.xyz and 1 or 0, M.spd and 1 or 0, M.anim and 1 or 0,
-        _G.LANG and _G.LANG.current or "es")
+        menu_volume, -- <--- Guardamos el volumen aquí (índice 10)
+        _G.LANG and _G.LANG.current or "es") -- Idioma (índice 11)
+        
     mod_storage_save("cp-dx", str)
 end
 
@@ -56,6 +59,7 @@ function load_config()
     if data ~= nil and data ~= "" then
         local t = {}
         for val in string.gmatch(data, "%S+") do table.insert(t, val) end
+        
         if #t >= 9 then
             tr, tg, tb = tonumber(t[1]), tonumber(t[2]), tonumber(t[3])
             r, g, b = tr, tg, tb -- Igualamos para que no haya una transición rara al iniciar el juego
@@ -67,8 +71,22 @@ function load_config()
             exiting_xyz = not M.xyz
             exiting_spd = not M.spd
         end
-        if #t >= 10 and _G.LANG then
-            _G.LANG.current = tostring(t[10])
+        
+        -- Truco de compatibilidad para evitar que explote con guardados viejos
+        if #t >= 10 then
+            if tonumber(t[10]) ~= nil then
+                -- Formato NUEVO: El dato 10 es un número (el volumen)
+                menu_volume = tonumber(t[10])
+                if #t >= 11 and _G.LANG then
+                    _G.LANG.current = tostring(t[11])
+                end
+            else
+                -- Formato VIEJO: El dato 10 es texto ("es" o "en"), no existía volumen
+                menu_volume = 1.0 -- Valor por defecto
+                if _G.LANG then
+                    _G.LANG.current = tostring(t[10])
+                end
+            end
         end
     end
 end

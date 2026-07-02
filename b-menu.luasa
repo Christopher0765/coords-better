@@ -23,21 +23,9 @@ local sel_dash = 1
 local sel_sub = 1
 local a_dash_cursor_x = 0
 local a_dash_cursor_y = 0
+local a_item = 0
 local dash_alpha = 1
 local sub_alpha = 0
-
--- Variables nuevas para las transiciones cinemáticas
-local title_lerp = 0
-local wave_intensity = 1
-local dash_card_scales = {}
-local dash_card_alphas = {}
-for i = 1, 10 do 
-    dash_card_scales[i] = 1
-    dash_card_alphas[i] = 1 
-end
-local a_dash_cursor_w = 0
-local a_dash_cursor_h = 0
-local a_item = 0
 
 -- Variables de Sonidos Personalizados
 local s_select = audio_sample_load("sound/select_menu.ogg")
@@ -118,6 +106,7 @@ local tabs = {
 
 local function play_menu_sound(snd)
     if snd then
+        -- Reproduce el sample de sonido en la posición del jugador local
         audio_sample_play(snd, gMarioStates[0].pos, menu_volume)
     end
 end
@@ -175,12 +164,11 @@ local function draw_shadow_text(text, x, y, scale, r, g, b, a)
     djui_hud_print_text(text, x, y, scale)
 end
 
-local function draw_wavy_text(text, start_x, start_y, scale, r, g, b, a, wave_amp)
-    wave_amp = wave_amp or 1
+local function draw_wavy_text(text, start_x, start_y, scale, r, g, b, a)
     local current_x_sh = start_x + (1.5 * scale)
     local j = 1
     for char in text:gmatch(".[\128-\191]*") do
-        local wave_y = math.sin(t_c * 4 + j * 0.4) * 2.5 * s_lerp * wave_amp
+        local wave_y = math.sin(t_c * 4 + j * 0.4) * 2.5 * s_lerp
         djui_hud_set_color(0, 0, 0, a * 0.4)
         djui_hud_print_text(char, current_x_sh, start_y + wave_y + (1.5 * scale), scale)
         current_x_sh = current_x_sh + djui_hud_measure_text(char) * scale
@@ -190,7 +178,7 @@ local function draw_wavy_text(text, start_x, start_y, scale, r, g, b, a, wave_am
     local current_x = start_x
     local i = 1
     for char in text:gmatch(".[\128-\191]*") do
-        local wave_y = math.sin(t_c * 4 + i * 0.4) * 2.5 * s_lerp * wave_amp
+        local wave_y = math.sin(t_c * 4 + i * 0.4) * 2.5 * s_lerp
         djui_hud_set_color(r, g, b, a)
         djui_hud_print_text(char, current_x, start_y + wave_y, scale)
         current_x = current_x + djui_hud_measure_text(char) * scale
@@ -198,14 +186,11 @@ local function draw_wavy_text(text, start_x, start_y, scale, r, g, b, a, wave_am
     end
 end
 
-local function draw_wavy_marquee_text(text, start_x, start_y, scale, base_r, base_g, base_b, alpha, wave_amp, marquee_amp)
-    wave_amp = wave_amp or 1
-    marquee_amp = marquee_amp or 1
-    
+local function draw_wavy_marquee_text(text, start_x, start_y, scale, base_r, base_g, base_b, alpha)
     local current_x_sh = start_x + (1.5 * scale)
     local j = 1
     for char in text:gmatch(".[\128-\191]*") do
-        local wave_y = math.sin(t_c * 4 + j * 0.4) * 2.5 * s_lerp * wave_amp
+        local wave_y = math.sin(t_c * 4 + j * 0.4) * 2.5 * s_lerp
         djui_hud_set_color(0, 0, 0, alpha * 0.4)
         djui_hud_print_text(char, current_x_sh, start_y + wave_y + (1.5 * scale), scale)
         current_x_sh = current_x_sh + djui_hud_measure_text(char) * scale
@@ -221,14 +206,14 @@ local function draw_wavy_marquee_text(text, start_x, start_y, scale, base_r, bas
     local current_x = start_x
     local k = 1
     for char in text:gmatch(".[\128-\191]*") do
-        local wave_y = math.sin(t_c * 4 + k * 0.4) * 2.5 * s_lerp * wave_amp
+        local wave_y = math.sin(t_c * 4 + k * 0.4) * 2.5 * s_lerp
         local highlight_idx = current_cycle / 0.4
         local dist = math.abs(highlight_idx - k)
         local blend = math.max(0, 1 - (dist / 1.5))
         
-        local r = base_r + (255 - base_r) * blend * marquee_amp
-        local g = base_g + (255 - base_g) * blend * marquee_amp
-        local b = base_b + (255 - base_b) * blend * marquee_amp
+        local r = base_r + (255 - base_r) * blend
+        local g = base_g + (255 - base_g) * blend
+        local b = base_b + (255 - base_b) * blend
         
         djui_hud_set_color(r, g, b, alpha)
         djui_hud_print_text(char, current_x, start_y + wave_y, scale)
@@ -406,67 +391,47 @@ local function draw_menu_background(x, y, w, h)
     draw_rounded_rect(x + bg_radius, y + h - 4 * s_lerp, w - (bg_radius * 2), 4 * s_lerp, 2 * s_lerp)
 end
 
-local function draw_dashboard(x, y, w, h, f_a, d_alpha)
+local function draw_dashboard(x, y, w, h, f_a)
     local d_title = _T("menu_dashboard_title")
     local inner_radius = menu_corner_radius * 0.7 * s_lerp
 
-    -- El título y la barra divisora usan d_alpha para desvanecerse en el submenú
     local title_x = x + (w / 2) - (djui_hud_measure_text(d_title) * 0.5 * s_lerp)
-    draw_shadow_text(d_title, title_x, y + 10 * s_lerp, 1 * s_lerp, 255, 255, 255, 255 * f_a * d_alpha)
+    draw_shadow_text(d_title, title_x, y + 10 * s_lerp, 1 * s_lerp, 255, 255, 255, 255 * f_a)
 
-    djui_hud_set_color(m_r, m_g, m_b, 100 * f_a * d_alpha) 
+    djui_hud_set_color(m_r, m_g, m_b, 100 * f_a) 
     draw_rounded_rect(x + 30 * s_lerp, y + 45 * s_lerp, w - 60 * s_lerp, 2 * s_lerp, 1 * s_lerp)
 
     local b_w, b_h = (w / 2) - 40 * s_lerp, (h / 2) - 50 * s_lerp
     local start_x, start_y = x + 25 * s_lerp, y + 60 * s_lerp
-    local l_alpha = (lang_text_alpha and (lang_text_alpha / 255) or 1)
 
     for i, t in ipairs(tabs) do
         local col = (i - 1) % 2
         local row = math.floor((i - 1) / 2)
-        
-        local c_scale = dash_card_scales[i] or 1
-        local c_alpha = dash_card_alphas[i] or 1
-        local card_f_a = f_a * c_alpha
-        
-        if card_f_a >= 0.01 then
-            local base_bx = start_x + col * (b_w + 30 * s_lerp)
-            local base_by = start_y + row * (b_h + 20 * s_lerp)
+        local bx = start_x + col * (b_w + 30 * s_lerp)
+        local by = start_y + row * (b_h + 20 * s_lerp)
+
+        if i == sel_dash then
+            a_dash_cursor_x = lerp(a_dash_cursor_x, bx, 0.2)
+            a_dash_cursor_y = lerp(a_dash_cursor_y, by, 0.2)
             
-            local cx, cy = base_bx + b_w/2, base_by + b_h/2
-            local bw_scaled = b_w * c_scale
-            local bh_scaled = b_h * c_scale
-            local bx = cx - bw_scaled/2
-            local by = cy - bh_scaled/2
+            local pulse = (math.sin(t_c * 3) + 1) / 2
+            djui_hud_set_color(m_r, m_g, m_b, (60 + 30 * pulse) * f_a)
+            draw_rounded_rect(a_dash_cursor_x, a_dash_cursor_y, b_w, b_h, inner_radius)
+            djui_hud_set_color(m_r, m_g, m_b, 255 * f_a)
+            draw_rounded_rect(a_dash_cursor_x, a_dash_cursor_y + inner_radius, 4 * s_lerp, b_h - (inner_radius * 2), 2 * s_lerp)
+        else
+            djui_hud_set_color(m_r, m_g, m_b, 20 * f_a)
+            draw_rounded_rect(bx, by, b_w, b_h, inner_radius)
+        end
 
-            if i == sel_dash then
-                if a_dash_cursor_w == 0 then
-                    a_dash_cursor_x = bx; a_dash_cursor_y = by
-                    a_dash_cursor_w = bw_scaled; a_dash_cursor_h = bh_scaled
-                end
-
-                a_dash_cursor_x = lerp(a_dash_cursor_x, bx, 0.2)
-                a_dash_cursor_y = lerp(a_dash_cursor_y, by, 0.2)
-                a_dash_cursor_w = lerp(a_dash_cursor_w, bw_scaled, 0.2)
-                a_dash_cursor_h = lerp(a_dash_cursor_h, bh_scaled, 0.2)
-                
-                local pulse = (math.sin(t_c * 3) + 1) / 2
-                djui_hud_set_color(m_r, m_g, m_b, (60 + 30 * pulse) * card_f_a)
-                draw_rounded_rect(a_dash_cursor_x, a_dash_cursor_y, a_dash_cursor_w, a_dash_cursor_h, inner_radius)
-                djui_hud_set_color(m_r, m_g, m_b, 255 * card_f_a)
-                draw_rounded_rect(a_dash_cursor_x, a_dash_cursor_y + inner_radius, 4 * s_lerp, a_dash_cursor_h - (inner_radius * 2), 2 * s_lerp)
-            else
-                djui_hud_set_color(m_r, m_g, m_b, 20 * card_f_a)
-                draw_rounded_rect(bx, by, bw_scaled, bh_scaled, inner_radius)
-            end
-
-            -- El texto de la opción seleccionada se dibuja globalmente para poder animarse
-            if i ~= sel_dash then
-                local txt_tab = _T(t.n_key)
-                local text_x = cx - (djui_hud_measure_text(txt_tab) * 0.4 * s_lerp * c_scale)
-                local text_y = cy - 10 * s_lerp * c_scale
-                draw_shadow_text(txt_tab, text_x, text_y, 1 * s_lerp * c_scale, 255, 255, 255, 150 * card_f_a * l_alpha)
-            end
+        local txt_tab = _T(t.n_key)
+        local text_x = bx + (b_w / 2) - (djui_hud_measure_text(txt_tab) * 0.4 * s_lerp)
+        local text_y = by + (b_h / 2) - 10 * s_lerp
+        
+        if i == sel_dash then
+            draw_wavy_marquee_text(txt_tab, text_x, text_y, 1 * s_lerp, m_r, m_g, m_b, 255 * f_a * (lang_text_alpha / 255))
+        else
+            draw_shadow_text(txt_tab, text_x, text_y, 1 * s_lerp, 255, 255, 255, 150 * f_a * (lang_text_alpha / 255))
         end
     end
 end
@@ -476,36 +441,38 @@ local function draw_submenu(x, y, w, h, f_a)
     local itms = current_tab.items
     local inner_radius = menu_corner_radius * 0.7 * s_lerp
     local btn_radius = menu_corner_radius * 0.5 * s_lerp
-    
-    local l_alpha = (lang_text_alpha and (lang_text_alpha / 255) or 1)
-    local txt_alpha = f_a * l_alpha
-    local slide_y = (1 - sub_alpha) * 40 * s_lerp -- Offset de deslizamiento hacia arriba
+    local txt_alpha = f_a * (lang_text_alpha / 255)
     
     djui_hud_set_color(m_r, m_g, m_b, 230 * f_a)
-    draw_rounded_rect(x + 12 * s_lerp, y + 45 * s_lerp + slide_y, w - 24 * s_lerp, 3 * s_lerp, 1.5 * s_lerp)
+    draw_rounded_rect(x + 12 * s_lerp, y + 45 * s_lerp, w - 24 * s_lerp, 3 * s_lerp, 1.5 * s_lerp)
     
     local txt_back = _T("menu_back")
-    draw_shadow_text(txt_back, x + 15 * s_lerp, y + 15 * s_lerp - slide_y, 0.6 * s_lerp, 255, 255, 255, 255 * txt_alpha)
+    draw_shadow_text(txt_back, x + 15 * s_lerp, y + 15 * s_lerp, 0.6 * s_lerp, 255, 255, 255, 255 * txt_alpha)
+    
+    local txt_title = _T(current_tab.n_key)
+    local title_w = djui_hud_measure_text(txt_title) * 0.5 * s_lerp
+    draw_shadow_text(txt_title, x + (w / 2) - title_w, y + 15 * s_lerp, 1 * s_lerp, 255, 255, 255, 255 * txt_alpha)
 
     a_scroll = lerp(a_scroll, s_off, 0.18)
     local i_st = y + 66 * s_lerp
     a_item = lerp(a_item, i_st + ((sel_sub - 1 - a_scroll) * 56 * s_lerp), 0.22)
 
     djui_hud_set_color(m_r, m_g, m_b, 35 * f_a) 
-    draw_rounded_rect(x + 15 * s_lerp, a_item + slide_y, w - 30 * s_lerp, 50 * s_lerp, inner_radius)
+    draw_rounded_rect(x + 15 * s_lerp, a_item, w - 30 * s_lerp, 50 * s_lerp, inner_radius)
     djui_hud_set_color(m_r, m_g, m_b, 240 * f_a) 
-    draw_rounded_rect(x + 15 * s_lerp, a_item + inner_radius + slide_y, 4 * s_lerp, 50 * s_lerp - (inner_radius * 2), 2 * s_lerp)
+    draw_rounded_rect(x + 15 * s_lerp, a_item + inner_radius, 4 * s_lerp, 50 * s_lerp - (inner_radius * 2), 2 * s_lerp)
 
     for i = 1, #itms do
         local r_i = i - a_scroll
         if r_i > 0 and r_i <= 5 then
-            local iy = i_st + ((r_i - 1) * 56 * s_lerp) + slide_y
-            if iy > i_st - 10 + slide_y and iy < y + h - 65 * s_lerp + slide_y then
+            local iy = i_st + ((r_i - 1) * 56 * s_lerp)
+            if iy > i_st - 10 and iy < y + h - 65 * s_lerp then
                 local txt_item_name = _T(itms[i].n_key)
                 local text_x = x + 35 * s_lerp
                 local text_y = iy + 6 * s_lerp
                 local r_val = (i == sel_sub) and 255 or 200
                 
+                -- El título del item SÍ lleva efecto Wavy cuando se selecciona
                 if i == sel_sub then
                     draw_wavy_text(txt_item_name, text_x, text_y, 0.8 * s_lerp, r_val, r_val, r_val, 255 * txt_alpha)
                 else
@@ -540,6 +507,7 @@ local function draw_submenu(x, y, w, h, f_a)
                     local bx = x + w - ch_w - 40 * s_lerp
                     local by = iy + 12 * s_lerp
                     
+                    -- El selector lateral NO lleva Wavy, se dibuja plano con sombra para soportar códigos de color nativos
                     if i == sel_sub then
                         draw_shadow_text(txt_choice, bx, by, ch_scale, 255, 255, 255, 255 * txt_alpha)
                     else
@@ -553,9 +521,9 @@ local function draw_submenu(x, y, w, h, f_a)
     if #itms > 4 then
         local sb_h = (4 / #itms) * (h - 145 * s_lerp)
         djui_hud_set_color(24, 28, 48, 200 * f_a) 
-        draw_rounded_rect(x + w - 14 * s_lerp, i_st + slide_y, 4 * s_lerp, h - 145 * s_lerp, 2 * s_lerp)
+        draw_rounded_rect(x + w - 14 * s_lerp, i_st, 4 * s_lerp, h - 145 * s_lerp, 2 * s_lerp)
         djui_hud_set_color(m_r, m_g, m_b, 255 * f_a) 
-        draw_rounded_rect(x + w - 14 * s_lerp, i_st + (a_scroll / (#itms - 4)) * (h - 145 * s_lerp - sb_h) + slide_y, 4 * s_lerp, sb_h, 2 * s_lerp)
+        draw_rounded_rect(x + w - 14 * s_lerp, i_st + (a_scroll / (#itms - 4)) * (h - 145 * s_lerp - sb_h), 4 * s_lerp, sb_h, 2 * s_lerp)
     end
 end
 
@@ -575,27 +543,6 @@ local function on_hud_render_menu()
 
     dash_alpha = lerp(dash_alpha, (menu_level == 1) and 1 or 0, 0.15)
     sub_alpha = lerp(sub_alpha, (menu_level == 2) and 1 or 0, 0.15)
-    
-    -- Variables nuevas de control para las transiciones
-    title_lerp = lerp(title_lerp, (menu_level == 2) and 1 or 0, 0.12)
-    wave_intensity = lerp(wave_intensity, (menu_level == 1) and 1 or 0, 0.12)
-
-    for i = 1, #tabs do
-        local target_scale = 1
-        local target_alpha = 1
-        
-        if menu_level == 1 then
-            target_scale = (i == sel_dash) and 1.05 or 1.0
-            target_alpha = 1.0
-        else
-            target_scale = (i == sel_dash) and 1.15 or 0.8
-            target_alpha = 0.0 
-        end
-        
-        dash_card_scales[i] = lerp(dash_card_scales[i] or 1, target_scale, 0.15)
-        local alpha_speed = (menu_level == 2 and i == sel_dash) and 0.15 or 0.15
-        dash_card_alphas[i] = lerp(dash_card_alphas[i] or 1, target_alpha, alpha_speed)
-    end
 
     if menu_state == "closed" then
         fade_alpha = 0
@@ -630,51 +577,12 @@ local function on_hud_render_menu()
 
     local f_a = a_lerp * fade_alpha
     if f_a > 0.01 then
-        -- Dibujamos los menus de fondo
-        draw_dashboard(x, y, w, h, f_a, dash_alpha)
+        if dash_alpha > 0.01 then
+            draw_dashboard(x, y, w, h, f_a * dash_alpha)
+        end
         
         if sub_alpha > 0.01 then
             draw_submenu(x, y, w, h, f_a * sub_alpha)
-        end
-        
-        -- Lógica de morphing global para el título seleccionado
-        local current_tab = tabs[sel_dash]
-        if current_tab then
-            local txt_tab = _T(current_tab.n_key)
-            
-            -- Posición origen (Tarjeta del dashboard)
-            local b_w, b_h = (w / 2) - 40 * s_lerp, (h / 2) - 50 * s_lerp
-            local start_x, start_y = x + 25 * s_lerp, y + 60 * s_lerp
-            local col = (sel_dash - 1) % 2
-            local row = math.floor((sel_dash - 1) / 2)
-            local cx = start_x + col * (b_w + 30 * s_lerp) + b_w/2
-            local cy = start_y + row * (b_h + 20 * s_lerp) + b_h/2
-            
-            local c_scale = dash_card_scales[sel_dash] or 1
-            local dash_text_x = cx - (djui_hud_measure_text(txt_tab) * 0.4 * s_lerp * c_scale)
-            local dash_text_y = cy - 10 * s_lerp * c_scale
-            
-            -- Posición destino (Cabecera del submenú)
-            local title_w = djui_hud_measure_text(txt_tab) * 0.5 * s_lerp
-            local sub_text_x = x + (w / 2) - title_w
-            local sub_text_y = y + 15 * s_lerp
-            
-            -- Interpolar posiciones y escala
-            local cur_x = lerp(dash_text_x, sub_text_x, title_lerp)
-            local cur_y = lerp(dash_text_y, sub_text_y, title_lerp)
-            local cur_scale = lerp(1 * s_lerp * c_scale, 1 * s_lerp, title_lerp)
-            
-            -- Interpolar Colores (Del color base de la tarjeta hacia blanco puro en el submenú)
-            local cur_r = lerp(m_r, 255, title_lerp)
-            local cur_g = lerp(m_g, 255, title_lerp)
-            local cur_b = lerp(m_b, 255, title_lerp)
-            
-            local l_alpha = (lang_text_alpha and (lang_text_alpha / 255) or 1)
-            local morph_alpha = 255 * f_a * l_alpha
-            local marquee_amp = 1 - title_lerp -- Apaga el barrido de luz al llegar arriba
-            
-            -- Se dibuja la versión mutante que flota entre pantallas
-            draw_wavy_marquee_text(txt_tab, cur_x, cur_y, cur_scale, cur_r, cur_g, cur_b, morph_alpha, wave_intensity, marquee_amp)
         end
 
         local txt_footer = _T("footer")

@@ -16,7 +16,7 @@ constants = {
 
 CP_VERSION_MAJOR = 1
 CP_VERSION_MINOR = 4
-CP_VERSION_PATCH = 0
+CP_VERSION_PATCH = 1
 CP_VERSION = math.tointeger(string.format("%d%d%d", CP_VERSION_MAJOR, CP_VERSION_MINOR, CP_VERSION_PATCH))
 
 hook_mod_menu_text(string.format("Version %d.%d.%d", CP_VERSION_MAJOR, CP_VERSION_MINOR, CP_VERSION_PATCH))

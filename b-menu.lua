@@ -1,6 +1,17 @@
 if unsupported then return end
 
 -------------------------
+--- FÓRMULAS ELÁSTICAS --
+-------------------------
+local function ease_out_cubic(t)
+    return 1 - math.pow(1 - t, 3)
+end
+
+local function ease_in_out_cubic(t)
+    return t < 0.5 and 4 * t * t * t or 1 - math.pow(-2 * t + 2, 3) / 2
+end
+
+-------------------------
 --- VARIABLES & SETUP ---
 -------------------------
 
@@ -445,10 +456,10 @@ local function draw_dashboard(x, y, w, h, f_a, d_alpha)
                     a_dash_cursor_w = bw_scaled; a_dash_cursor_h = bh_scaled
                 end
 
-                a_dash_cursor_x = lerp(a_dash_cursor_x, bx, 0.2)
-                a_dash_cursor_y = lerp(a_dash_cursor_y, by, 0.2)
-                a_dash_cursor_w = lerp(a_dash_cursor_w, bw_scaled, 0.2)
-                a_dash_cursor_h = lerp(a_dash_cursor_h, bh_scaled, 0.2)
+                a_dash_cursor_x = lerp(a_dash_cursor_x, bx, 0.18)
+                a_dash_cursor_y = lerp(a_dash_cursor_y, by, 0.18)
+                a_dash_cursor_w = lerp(a_dash_cursor_w, bw_scaled, 0.18)
+                a_dash_cursor_h = lerp(a_dash_cursor_h, bh_scaled, 0.18)
                 
                 local pulse = (math.sin(t_c * 3) + 1) / 2
                 djui_hud_set_color(m_r, m_g, m_b, (60 + 30 * pulse) * card_f_a)
@@ -576,7 +587,6 @@ local function on_hud_render_menu()
     dash_alpha = lerp(dash_alpha, (menu_level == 1) and 1 or 0, 0.15)
     sub_alpha = lerp(sub_alpha, (menu_level == 2) and 1 or 0, 0.15)
     
-    -- Variables nuevas de control para las transiciones
     title_lerp = lerp(title_lerp, (menu_level == 2) and 1 or 0, 0.12)
     wave_intensity = lerp(wave_intensity, (menu_level == 1) and 1 or 0, 0.12)
 
@@ -615,7 +625,9 @@ local function on_hud_render_menu()
 
     if s_lerp < 0.01 then return end
 
-    local w, h = 560 * s_lerp, 400 * s_lerp
+    local s_animated = ease_out_cubic(s_lerp)
+    
+    local w, h = 560 * s_animated, 400 * s_animated
     local x, y = (sw - w) / 2, (sh - h) / 2
 
     djui_hud_set_color(4, 6, 14, 130 * a_lerp) 
@@ -630,19 +642,16 @@ local function on_hud_render_menu()
 
     local f_a = a_lerp * fade_alpha
     if f_a > 0.01 then
-        -- Dibujamos los menus de fondo
         draw_dashboard(x, y, w, h, f_a, dash_alpha)
         
         if sub_alpha > 0.01 then
             draw_submenu(x, y, w, h, f_a * sub_alpha)
         end
         
-        -- Lógica de morphing global para el título seleccionado
         local current_tab = tabs[sel_dash]
         if current_tab then
             local txt_tab = _T(current_tab.n_key)
             
-            -- Posición origen (Tarjeta del dashboard)
             local b_w, b_h = (w / 2) - 40 * s_lerp, (h / 2) - 50 * s_lerp
             local start_x, start_y = x + 25 * s_lerp, y + 60 * s_lerp
             local col = (sel_dash - 1) % 2
@@ -654,26 +663,24 @@ local function on_hud_render_menu()
             local dash_text_x = cx - (djui_hud_measure_text(txt_tab) * 0.4 * s_lerp * c_scale)
             local dash_text_y = cy - 10 * s_lerp * c_scale
             
-            -- Posición destino (Cabecera del submenú)
             local title_w = djui_hud_measure_text(txt_tab) * 0.5 * s_lerp
             local sub_text_x = x + (w / 2) - title_w
             local sub_text_y = y + 15 * s_lerp
             
-            -- Interpolar posiciones y escala
-            local cur_x = lerp(dash_text_x, sub_text_x, title_lerp)
-            local cur_y = lerp(dash_text_y, sub_text_y, title_lerp)
-            local cur_scale = lerp(1 * s_lerp * c_scale, 1 * s_lerp, title_lerp)
+            local title_animated = ease_in_out_cubic(title_lerp)
             
-            -- Interpolar Colores (Del color base de la tarjeta hacia blanco puro en el submenú)
-            local cur_r = lerp(m_r, 255, title_lerp)
-            local cur_g = lerp(m_g, 255, title_lerp)
-            local cur_b = lerp(m_b, 255, title_lerp)
+            local cur_x = lerp(dash_text_x, sub_text_x, title_animated)
+            local cur_y = lerp(dash_text_y, sub_text_y, title_animated)
+            local cur_scale = lerp(1 * s_lerp * c_scale, 1 * s_lerp, title_animated)
+            
+            local cur_r = lerp(m_r, 255, title_animated)
+            local cur_g = lerp(m_g, 255, title_animated)
+            local cur_b = lerp(m_b, 255, title_animated)
             
             local l_alpha = (lang_text_alpha and (lang_text_alpha / 255) or 1)
             local morph_alpha = 255 * f_a * l_alpha
-            local marquee_amp = 1 - title_lerp -- Apaga el barrido de luz al llegar arriba
+            local marquee_amp = 1 - title_animated
             
-            -- Se dibuja la versión mutante que flota entre pantallas
             draw_wavy_marquee_text(txt_tab, cur_x, cur_y, cur_scale, cur_r, cur_g, cur_b, morph_alpha, wave_intensity, marquee_amp)
         end
 

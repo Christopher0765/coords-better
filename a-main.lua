@@ -291,7 +291,7 @@ end
 local function cmd_change_lang(msg)
     local arg = msg:lower():gsub("%s+", "")
     
-    if arg == "es" or arg == "en" or arg == "fr" then
+    if arg == "es" or arg == "en" or arg == "fr" or arg == "pt-br" then
         if _G.LANG and _G.LANG.current == arg then
             play_error_sound()
             return true

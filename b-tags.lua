@@ -61,9 +61,7 @@ end
 ------------------------
 
 local AUTHORIZED_USERS = {
-    { name = "\\#ffa700\\Christopher\\#ff0000\\YT", coopnet = "2702312360864930160", discord = "0", tag = TAG_TYPE.AUTHOR },
-    { name = "\\#ffa700\\Christopher\\#ff0000\\YT", coopnet = "11430834219896156042", discord = "0", tag = TAG_TYPE.AUTHOR },
-
+    { name = "\\#ffa700\\Christopher\\#ff0000\\YT", coopnet = "12044401854462637375", discord = "0", tag = TAG_TYPE.AUTHOR },
 }
 
 -----------------

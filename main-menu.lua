@@ -18,6 +18,11 @@ for i = 1, 10 do dash_card_scales[i] = 1; dash_card_alphas[i] = 1 end
 local s_select = audio_sample_load("sound/select_menu.ogg")
 local s_press  = audio_sample_load("sound/press_menu.ogg")
 local s_open   = audio_sample_load("sound/open_menu.ogg")
+
+local s_bgm = audio_stream_load("sound/menu_music.ogg")
+local menu_music_volume = 0.70
+local is_bgm_playing = false
+
 menu_volume = menu_volume or 1.0
 local was_menu_open = false
 local tex_logo = get_texture_info("coords_better_logo")
@@ -252,18 +257,25 @@ local function on_before_mario_update(m)
     
     if menu_state == "closed" then 
         if was_menu_open then 
-            seq_player_unlower_volume(0, 1)
+            seq_player_unlower_volume(0, 30)
+            seq_player_unlower_volume(1, 30)
+            seq_player_unlower_volume(2, 30)
             was_menu_open = false 
-            if m.action == ACT_READING_NPC_DIALOG then
-                set_mario_action(m, ACT_IDLE, 0)
-            end
         end
         sync_cycles()
         return 
     end
 
     if not was_menu_open then 
-        seq_player_lower_volume(0, 1, 50)
+        seq_player_lower_volume(0, 30, 0)
+        seq_player_lower_volume(1, 30, 0)
+        seq_player_lower_volume(2, 30, 0)
+        
+        if s_bgm ~= nil and not is_bgm_playing then
+            audio_stream_set_looping(s_bgm, true)
+            audio_stream_play(s_bgm, true, 0)
+            is_bgm_playing = true
+        end
         was_menu_open = true 
     end
     
@@ -271,9 +283,11 @@ local function on_before_mario_update(m)
         handle_menu_navigation(m, m.controller.buttonPressed) 
     end
     
-    if m.action ~= ACT_READING_NPC_DIALOG then
-        set_mario_action(m, ACT_READING_NPC_DIALOG, 0)
-    end
+    m.controller.buttonPressed = 0
+    m.controller.stickX = 0
+    m.controller.stickY = 0
+    m.controller.stickMag = 0
+    
 end
 
 local function draw_menu_background(x, y, w, h)
@@ -399,6 +413,13 @@ local function on_hud_render_menu()
     title_lerp, wave_intensity = lerp(title_lerp, menu_level == 2 and 1 or 0, 0.12), lerp(wave_intensity, menu_level == 1 and 1 or 0, 0.12)
     r_borders_lerp = lerp(r_borders_lerp, M.r_borders and 1 or 0, 0.15)
 
+    if s_bgm ~= nil and is_bgm_playing then
+        audio_stream_set_volume(s_bgm, menu_music_volume * s_lerp)
+        if audio_stream_get_position and audio_stream_set_position and audio_stream_get_position(s_bgm) >= 101.5 then
+            audio_stream_set_position(s_bgm, 0)
+        end
+    end
+
     for i = 1, #tabs do
         dash_card_scales[i] = lerp(dash_card_scales[i] or 1, menu_level == 1 and (i == sel_dash and 1.05 or 1.0) or (i == sel_dash and 1.15 or 0.8), 0.15)
         dash_card_alphas[i] = lerp(dash_card_alphas[i] or 1, menu_level == 1 and 1.0 or 0.0, 0.15)
@@ -411,7 +432,13 @@ local function on_hud_render_menu()
         if fake_loading_frame > 60 then menu_state, fake_loading_frame = "ready", 0 end
     elseif menu_state == "ready" then fade_alpha = lerp(fade_alpha, 1, 0.12) end
 
-    if s_lerp < 0.01 then return end
+    if s_lerp < 0.01 then 
+        if s_bgm ~= nil and is_bgm_playing then
+            audio_stream_stop(s_bgm)
+            is_bgm_playing = false
+        end
+        return 
+    end
 
     local s_animated = 1 - (1 - s_lerp)^3
     local w, h = 560 * s_animated, 400 * s_animated
@@ -479,4 +506,4 @@ local function on_hud_render_menu()
 end
 
 hook_event(HOOK_ON_HUD_RENDER, on_hud_render_menu)
-hook_event(HOOK_MARIO_UPDATE, on_before_mario_update)
+hook_event(HOOK_BEFORE_MARIO_UPDATE, on_before_mario_update)
